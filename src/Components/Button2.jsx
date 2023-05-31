@@ -11,12 +11,12 @@ export const Button2 = (props) => {
           background:
             "linear-gradient(90deg, red 0%, #B345B9 57%,  blue 100%) ",
 
-          fontSize: { xs: "0.8rem", md: "1rem" },
+          fontSize: { xs: "0.8rem", md: "1.3rem" },
           fontWeight: "600",
           textAlign: "center",
           width: "100%",
           px: 3,
-          py: 1,
+          py: 1.5,
         }}
       >
         {" "}

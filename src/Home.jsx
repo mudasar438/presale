@@ -14,6 +14,8 @@ import {
   preSaleToken,
   preSaleContractToken,
 } from "./ConectivityAssets/enviorment";
+import Toastify from "./Components/Tostify";
+import Loading from "./Components/Loading";
 
 const array = [
   {
@@ -43,27 +45,45 @@ const array = [
 ];
 
 export const Home = () => {
-  const { address, isConnecting, isDisconnected } = useAccount();
-  console.log("address", address);
+  const [loading, setLoading] = useState(false);
+  const [alertState, setAlertState] = useState({
+    open: false,
+    message: "",
+    severity: undefined,
+  });
+  const showToast = (msg, type) => {
+    return setAlertState({
+      open: true,
+      message: msg,
+      severity: type,
+    });
+  };
+
   const [amount, setAmount] = useState(0);
   const [miteyCoin, setMiteyCoin] = useState(0);
-  const handleChange = (e) => {
-    console.log("event", e);
-  };
-  console.log("amount", amount);
 
   const buyToken = useCallback(async () => {
     try {
+      setLoading(true);
       const amountInParse = parseUnits(amount.toString());
+      console.log(amountInParse);
       const getToken = await writeContract({
         address: preSaleContractToken,
         abi: preSaleContractAbi,
         functionName: "buyToken",
-        args: [amountInParse],
+        // args: [amountInParse],
+        value: amountInParse,
       });
+      // showToast(data?.message, "success");
       console.log("getToken", getToken);
+      setLoading(false);
+      // eslint-disable-next-line no-undef
+      showToast(getToken?.hash, "success");
     } catch (err) {
-      console.log("buyToken", err);
+      setLoading(false);
+
+      console.log("buyToken Error", err);
+      showToast(err.message, "error");
     }
   }, [amount]);
   const bnbToToken = useCallback(async () => {
@@ -103,6 +123,8 @@ export const Home = () => {
 
   return (
     <>
+      <Loading isLoading={loading} />
+      <Toastify setAlertState={setAlertState} alertState={alertState} />
       <Navbar />
       <Box
         sx={{
@@ -149,6 +171,7 @@ export const Home = () => {
                   id="outlined-basic"
                   variant="outlined"
                   placeholder="Enter BNB"
+                  value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   sx={{
                     width: "100%",
@@ -219,7 +242,7 @@ export const Home = () => {
               alignItems: "center",
             }}
           >
-            <Box
+            {/* <Box
               sx={{
                 background: "linear-gradient(to right, #c0392b, #8e44ad)",
                 p: "3px",
@@ -235,10 +258,10 @@ export const Home = () => {
                     p: { xs: 1, md: 1 },
                   }}
                 >
-                  {amount} MiteyCoin
+                  {amount} BNB
                 </Typography>
               </Box>
-            </Box>
+            </Box> */}
           </Grid>
         </Grid>
         <Grid container rowSpacing={3} spacing={2}>
@@ -262,7 +285,7 @@ export const Home = () => {
                     setAmount(item.value);
                   }}
                 >
-                  {item.name} Mitey
+                  {item.name} BNB
                 </Button1>
               </Grid>
             );
@@ -274,10 +297,11 @@ export const Home = () => {
             justifyContent: "center",
             alignItems: "center",
             gap: "0px 20px",
+            width: "50%",
           }}
         >
           <Button1 onClick={() => setAmount(0)}>reset</Button1>
-          <Button2>Deposit</Button2>
+          <Button2 onClick={buyToken}>BUY Mitey</Button2>
         </Box>
       </Box>
     </>
