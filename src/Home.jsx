@@ -3,7 +3,7 @@ import Navbar from "./Navbar";
 import { Button1 } from "./Components/Button1";
 import { Button2 } from "./Components/Button2";
 import { useCallback, useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { waitForTransaction } from "@wagmi/core";
 import { readContract, writeContract } from "wagmi/actions";
 import preSaleTokenAbi from "./ConectivityAssets/preSaleTokenAbi.json";
 import preSaleContractAbi from "./ConectivityAssets/preSaleContractAbi.json";
@@ -67,18 +67,17 @@ export const Home = () => {
       setLoading(true);
       const amountInParse = parseUnits(amount.toString());
       console.log(amountInParse);
-      const getToken = await writeContract({
+      const { hash } = await writeContract({
         address: preSaleContractToken,
         abi: preSaleContractAbi,
         functionName: "buyToken",
         // args: [amountInParse],
         value: amountInParse,
       });
-      // showToast(data?.message, "success");
-      console.log("getToken", getToken);
       setLoading(false);
+      const receipt = await waitForTransaction({ hash });
       // eslint-disable-next-line no-undef
-      showToast(getToken?.hash, "success");
+      showToast("transaction success", "success");
     } catch (err) {
       setLoading(false);
 
