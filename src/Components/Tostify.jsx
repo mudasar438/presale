@@ -7,7 +7,7 @@ const Toastify = ({ alertState, setAlertState }) => {
     <Snackbar
       anchorOrigin={{ vertical: "top", horizontal: "center" }}
       open={alertState.open}
-      autoHideDuration={3000}
+      autoHideDuration={5000}
       key={"top" + "center"}
       onClose={() => setAlertState({ ...alertState, open: false })}
     >

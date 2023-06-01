@@ -9,6 +9,7 @@ import preSaleTokenAbi from "./ConectivityAssets/preSaleTokenAbi.json";
 import preSaleContractAbi from "./ConectivityAssets/preSaleContractAbi.json";
 import { ethers } from "ethers";
 const { parseUnits, formatUnits } = ethers.utils;
+import { useAccount } from "wagmi";
 
 import {
   preSaleToken,
@@ -16,6 +17,7 @@ import {
 } from "./ConectivityAssets/enviorment";
 import Toastify from "./Components/Tostify";
 import Loading from "./Components/Loading";
+import { CustomTextFeild } from "./Components/CustomTextFeild";
 
 const array = [
   {
@@ -45,7 +47,12 @@ const array = [
 ];
 
 export const Home = () => {
+  const { address, isConnecting, isDisconnected } = useAccount();
   const [loading, setLoading] = useState(false);
+  const [allowance, setAllowance] = useState(0);
+  console.log("allowance", allowance);
+  const [approveToken, setApproveToken] = useState(0);
+  const [balance, setBalance] = useState(0);
   const [alertState, setAlertState] = useState({
     open: false,
     message: "",
@@ -64,27 +71,35 @@ export const Home = () => {
 
   const buyToken = useCallback(async () => {
     try {
-      setLoading(true);
-      const amountInParse = parseUnits(amount.toString());
-      console.log(amountInParse);
-      const { hash } = await writeContract({
-        address: preSaleContractToken,
-        abi: preSaleContractAbi,
-        functionName: "buyToken",
-        // args: [amountInParse],
-        value: amountInParse,
-      });
-      setLoading(false);
-      const receipt = await waitForTransaction({ hash });
-      // eslint-disable-next-line no-undef
-      showToast("transaction success", "success");
+      if (allowance >= amount && amount <= balance) {
+        setLoading(true);
+        const amountInParse = parseUnits(amount.toString());
+        console.log(amountInParse);
+        const { hash } = await writeContract({
+          address: preSaleContractToken,
+          abi: preSaleContractAbi,
+          functionName: "buyToken",
+          // args: [amountInParse],
+          value: amountInParse,
+        });
+        setLoading(false);
+        const receipt = await waitForTransaction({ hash });
+        // eslint-disable-next-line no-undef
+        showToast("transaction success", "success");
+      } else {
+        if (allowance < amount) {
+          showToast("Please Approve Token", "error");
+        } else if (balance < amount) {
+          showToast("Your Ammount is more then Contract balance", "error");
+        }
+      }
     } catch (err) {
       setLoading(false);
 
       console.log("buyToken Error", err);
       showToast(err.message, "error");
     }
-  }, [amount]);
+  }, [allowance, amount, balance]);
   const bnbToToken = useCallback(async () => {
     try {
       const amountInParse = parseUnits(amount.toString());
@@ -97,28 +112,88 @@ export const Home = () => {
       const MiteyCoin = Number(formatUnits(data.toString(), 18));
       setMiteyCoin(MiteyCoin);
     } catch (error) {
-      console.log(error);
+      console.log("error bnb to token", error);
     }
   }, [amount]);
-  // const balanceOf = useCallback(async () => {
-  //   try {
-  //     const data = await readContract({
-  //       address: preSaleToken,
-  //       abi: preSaleTokenAbi,
-  //       functionName: "balanceOf",
-  //       args: [address],
-  //     });
-  //     const balance = Number(formatUnits(data.toString(), 18));
-  //     console.log("balance: " + balance);
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }, [address]);
+  const balanceOf = useCallback(async () => {
+    try {
+      const data = await readContract({
+        address: preSaleToken,
+        abi: preSaleTokenAbi,
+        functionName: "balanceOf",
+        args: [address],
+      });
+      const balance = Number(formatUnits(data.toString(), 18));
+      setBalance(balance);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [address]);
+  const decimal = useCallback(async () => {
+    try {
+      const decimals = await readContract({
+        address: preSaleToken,
+        abi: preSaleTokenAbi,
+        functionName: "decimals",
+      });
+      // const balance = Number(formatUnits(data.toString(), 18));
+      // console.log("decimals: " + decimals);
+    } catch (error) {
+      console.log("Error decimal", error);
+    }
+  }, []);
+  const allownances = useCallback(async () => {
+    try {
+      const data = await readContract({
+        address: preSaleToken,
+        abi: preSaleTokenAbi,
+        functionName: "allowance",
+        args: [address, preSaleContractToken],
+      });
+      // console.log("data ....", data);
+      const res = Number(formatUnits(data.toString(), 18));
+      console.log("response", res);
+      setAllowance(res);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [address]);
+
+  const aproveToken = useCallback(async () => {
+    try {
+      // if (allowance <= 0) {
+      setLoading(true);
+      const amountInParse = parseUnits(approveToken.toString());
+      const aprove = await writeContract({
+        address: preSaleToken,
+        abi: preSaleTokenAbi,
+        functionName: "approve",
+        args: [preSaleContractToken, amountInParse],
+      });
+      setLoading(false);
+      const receipt = await waitForTransaction({ hash });
+      showToast(" Token Approved SuccessFull", "success");
+      console.log("aproval", aprove);
+      // }
+    } catch (error) {
+      console.log(error);
+    }
+  }, [approveToken]);
 
   useEffect(() => {
-    // balanceOf();
+    balanceOf();
+    decimal();
     bnbToToken();
-  }, [amount, bnbToToken]);
+    allownances();
+  }, [
+    allowance,
+    allownances,
+    amount,
+    aproveToken,
+    balanceOf,
+    bnbToToken,
+    decimal,
+  ]);
 
   return (
     <>
@@ -129,7 +204,7 @@ export const Home = () => {
         sx={{
           width: "100%",
           background: "  rgba(66,66,66,1) 35%,",
-          p: 5,
+          p: { xs: 0, md: 5 },
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -149,6 +224,7 @@ export const Home = () => {
             >
               DEPOSIT
             </Typography>
+
             <Box
               sx={{
                 display: "flex",
@@ -156,61 +232,78 @@ export const Home = () => {
                 alignItems: "center",
                 flexDirection: "column",
                 width: "100%",
+                background: "#2F3142",
+                borderRadius: "10px",
+                py: 5,
+                my: 10,
               }}
             >
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0px 20px",
-                  width: "60%",
+                  py: 5,
+                  width: "100%",
                 }}
               >
-                <TextField
+                <Typography
+                  mb={2}
+                  sx={{
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    fontSize: { xs: "1rem", md: "2rem" },
+                  }}
+                >
+                  You have Total MTC : {balance}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    flexDirection: "column",
+                    width: "100%",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "start",
+                      gap: "0px 20px",
+                      width: { xs: "100%", md: "60%" },
+                      flexDirection: "column",
+                      p: 1,
+                    }}
+                  >
+                    <Typography my={1}>Enter Approve Token</Typography>
+                    <CustomTextFeild
+                      id="outlined-basic"
+                      variant="outlined"
+                      placeholder="Enter Token For Approve"
+                      value={approveToken}
+                      onChange={(e) => setApproveToken(e.target.value)}
+                    />
+                    {/* <Box sx={{ width: "30%" }}>
+                      <Button2 onClick={aproveToken}>Aprove</Button2>
+                    </Box> */}
+                  </Box>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "start",
+                  gap: "0px 20px",
+                  width: { xs: "100%", md: "60%" },
+                  p: 1,
+                  flexDirection: "column",
+                }}
+              >
+                <Typography my={1}>Enter Amount</Typography>
+                <CustomTextFeild
                   id="outlined-basic"
                   variant="outlined"
-                  placeholder="Enter BNB"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  sx={{
-                    width: "100%",
-                    fontFamily: "Roboto",
-                    fontWeight: "500",
-                    borderRadius: "5px",
-                    "& label.Mui-focused": {
-                      color: "#fff",
-                    },
-                    "& .MuiInputLabel": {
-                      root: {
-                        color: "#ff0000", // Change this to your desired label color
-                      },
-                    },
-                    "& .MuiInput-underline:after": {
-                      borderBottomColor: "#fff",
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      "& fieldset": {
-                        borderColor: "#fff",
-                      },
-                      "&:hover fieldset": {
-                        borderColor: "#fff",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#fff",
-                      },
-                    },
-                    "&input": {
-                      "&::placeholder": {
-                        textOverflow: "ellipsis !important",
-                        color: "#fff",
-                      },
-                    },
-                    "& input": {
-                      color: "white",
-                      fontSize: { xs: "12px", md: "14px" },
-                    },
-                    background: "#000",
-                  }}
+                  placeholder="Enter BNB"
                 />
                 {/* <Box width="150px">
                   <Button2 onClick={bnbToToken}>Convert</Button2>
@@ -220,17 +313,6 @@ export const Home = () => {
                 BNB TO MiteyCoin : {miteyCoin}
               </Typography>
             </Box>
-
-            <Typography
-              sx={{
-                fontSize: { xs: "1rem", md: "1.4rem" },
-                fontWeight: "400",
-                textAlign: "center",
-                my: 2,
-              }}
-            >
-              DEPOSIT MIN 500 TRX MAX 300 TRX FREE
-            </Typography>
           </Grid>
           <Grid
             item
@@ -296,11 +378,11 @@ export const Home = () => {
             justifyContent: "center",
             alignItems: "center",
             gap: "0px 20px",
-            width: "50%",
+            width: { xs: "100%", md: "50%" },
           }}
         >
           <Button1 onClick={() => setAmount(0)}>reset</Button1>
-          <Button2 onClick={buyToken}>BUY Mitey</Button2>
+          <Button2 onClick={buyToken}>BUY MTC</Button2>
         </Box>
       </Box>
     </>
